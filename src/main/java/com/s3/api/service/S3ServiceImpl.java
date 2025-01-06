@@ -1,6 +1,7 @@
 package com.s3.api.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.regions.Region;
@@ -17,11 +18,15 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.List;
 
 @Service
 public class S3ServiceImpl implements IS3Service {
+
+    @Value("${spring.destination.folder}")
+    private String destinationFolder;
 
     @Autowired
     private S3Client s3Client;
@@ -46,11 +51,14 @@ public class S3ServiceImpl implements IS3Service {
     }
 
     @Override
-    public List<Bucket> getAllBuckets() {
+    public List<String> getAllBuckets() {
         ListBucketsResponse bucketsResponse = this.s3Client.listBuckets();
 
         if(bucketsResponse.hasBuckets()){
-            return bucketsResponse.buckets();
+            return bucketsResponse.buckets()
+                    .stream()
+                    .map(Bucket::name)
+                    .toList();
         } else {
             return List.of();
         }
@@ -77,11 +85,21 @@ public class S3ServiceImpl implements IS3Service {
 
         ResponseBytes<GetObjectResponse> objectBytes = this.s3Client.getObjectAsBytes(getObjectRequest);
 
-        File destinationFile = new File("src/main/resources/static");
+        String fileName;
 
-        try (FileOutputStream fos = new FileOutputStream(destinationFile)) {
+        if(key.contains("/")){
+            fileName = key.substring( key.lastIndexOf("/") );
+        } else {
+            fileName = key;
+        }
+
+        String filePath = Paths.get("src", "main", "resources", "static", fileName).toString();
+
+        File file = new File(filePath);
+        file.getParentFile().mkdirs();
+
+        try (FileOutputStream fos = new FileOutputStream(file)) {
             fos.write(objectBytes.asByteArray());
-            fos.flush();
         } catch (IOException e) {
             throw new IOException("Error al descargar el archivo: " + e.getCause());
         }
@@ -99,7 +117,7 @@ public class S3ServiceImpl implements IS3Service {
                 .putObjectRequest(putObjectRequest)
                 .build();
 
-        PresignedPutObjectRequest presignedRequest = s3Presigner.presignPutObject(presignRequest);
+        PresignedPutObjectRequest presignedRequest = this.s3Presigner.presignPutObject(presignRequest);
         URL presignedUrl = presignedRequest.url();
 
         return presignedUrl.toString();
@@ -117,7 +135,7 @@ public class S3ServiceImpl implements IS3Service {
                 .getObjectRequest(getObjectRequest)
                 .build();
 
-        PresignedGetObjectRequest presignedRequest = s3Presigner.presignGetObject(presignRequest);
+        PresignedGetObjectRequest presignedRequest = this.s3Presigner.presignGetObject(presignRequest);
         URL presignedUrl = presignedRequest.url();
 
         return presignedUrl.toString();

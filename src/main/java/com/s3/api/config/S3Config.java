@@ -43,13 +43,12 @@ public class S3Config {
     @Bean
     public S3AsyncClient getS3AsyncClient(){
         AwsBasicCredentials basicCredentials = AwsBasicCredentials.create(awsAccessKey, awsSecretKey);
-        S3AsyncClient s3AsyncClient = S3AsyncClient.builder()
+        return S3AsyncClient.builder()
                 .region(Region.of(region))
                 .endpointOverride(URI.create("https://s3.us-east-1.amazonaws.com"))
                 .credentialsProvider(StaticCredentialsProvider.create(basicCredentials))
                 .forcePathStyle(true)
                 .build();
-        return s3AsyncClient;
     }
 
     /**
@@ -57,8 +56,11 @@ public class S3Config {
      */
     @Bean
     public S3Presigner getS3Presigner(){
+        AwsBasicCredentials basicCredentials = AwsBasicCredentials.create(awsAccessKey, awsSecretKey);
+
         return S3Presigner.builder()
                 .region(Region.of(region))
+                .credentialsProvider(StaticCredentialsProvider.create(basicCredentials))
                 .build();
     }
 }

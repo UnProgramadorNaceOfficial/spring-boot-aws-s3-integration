@@ -15,7 +15,7 @@ public interface IS3Service {
     String checkIfBucketExist(String bucketName);
 
     // Listar buckets
-    List<Bucket> getAllBuckets();
+    List<String> getAllBuckets();
 
     // Cargar un archivo a un bucket
     Boolean uploadFile(String bucketName, String key, Path fileLocation);
